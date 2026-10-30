@@ -1,0 +1,70 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    function validTimetable() {
+      let data = request.resource.data;
+
+      return data.keys().hasAll([
+          'id',
+          'name',
+          'className',
+          'days',
+          'periodsPerDay',
+          'subjects',
+          'teachers',
+          'rooms',
+          'lessons',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'name',
+          'className',
+          'days',
+          'periodsPerDay',
+          'subjects',
+          'teachers',
+          'rooms',
+          'lessons',
+          'updatedAt'
+        ])
+        && data.id is string
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && data.className is string
+        && data.days is list
+        && data.days.size() > 0
+        && data.days.size() <= 6
+        && data.periodsPerDay is int
+        && data.periodsPerDay >= 1
+        && data.periodsPerDay <= 12
+        && data.subjects is list
+        && data.subjects.size() <= 100
+        && data.teachers is map
+        && data.rooms is map
+        && data.lessons is list
+        && data.lessons.size() <= 72
+        && data.updatedAt is int;
+    }
+
+    match /users/{userId}/timetables/{timetableId} {
+      allow read, delete: if isOwner(userId);
+
+      allow create, update: if isOwner(userId)
+        && validTimetable()
+        && request.resource.data.id == timetableId;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
