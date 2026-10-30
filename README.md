@@ -33,6 +33,10 @@ authenticated user to access only their own `users/{uid}/timetables` records.
 Do not put service-account or service-role credentials in Vite environment
 variables.
 
+The Vercel rewrite configuration serves the single-page app for direct visits
+to `/signin`, `/signup`, and `/app`, so the client-side routes work after
+deployment as well as when navigating from the home page.
+
 ## Checks
 
 ```powershell

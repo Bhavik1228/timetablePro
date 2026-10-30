@@ -174,7 +174,8 @@ export function replaceSchoolData(data: SchoolData): void {
     throw new Error("The supplied school data is invalid.");
   }
 
-  const issues = validateSchoolData(data);
+  const normalized = { ...data, rooms: data.rooms ?? [] };
+  const issues = validateSchoolData(normalized);
   const errors = issues.filter((item) => item.severity === "error");
 
   if (errors.length > 0) {
@@ -185,7 +186,7 @@ export function replaceSchoolData(data: SchoolData): void {
     );
   }
 
-  writeStoredData(clone(data));
+  writeStoredData(clone(normalized));
 }
 
 function updateData(

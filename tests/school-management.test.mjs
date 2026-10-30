@@ -153,7 +153,7 @@ test("subject assignments preserve per-class weekly frequency and block size", (
   assert.equal(second.weeklyFrequency, 2);
 });
 
-test("legacy school data loads with an empty room inventory without data loss", () => {
+test("legacy school data loads and replaces with an empty room inventory without data loss", () => {
   storage.clear();
   const legacy = createEmptySchoolData();
   delete legacy.rooms;
@@ -163,6 +163,10 @@ test("legacy school data loads with an empty room inventory without data loss", 
   const restored = getSchoolData();
   assert.equal(restored.settings.schoolName, "Existing School");
   assert.deepEqual(restored.rooms, []);
+
+  replaceSchoolData(legacy);
+  assert.equal(getSchoolData().settings.schoolName, "Existing School");
+  assert.deepEqual(getSchoolData().rooms, []);
 });
 
 test("default school settings have enough time for every configured period", () => {
