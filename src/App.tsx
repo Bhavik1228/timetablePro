@@ -25,6 +25,7 @@ import {
   saveTimetable as saveCloudTimetable,
   subscribeToTimetables,
 } from "./services/timetableService";
+import { isTimetableRecord } from "./services/timetableBackup";
 import { isFirebaseConfigured } from "./firebase";
 import type { Lesson, SchoolDay, Timetable } from "./types";
 
@@ -48,10 +49,43 @@ const DEFAULT_SUBJECTS = [
   "Computer Science",
 ];
 
+function normalizeSavedTimetable(value: unknown): Timetable | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Partial<Timetable>;
+  if (typeof record.id !== "string" || !record.id || record.id === "draft") {
+    return null;
+  }
+
+  const defaultDays: SchoolDay[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const normalized: Timetable = {
+    id: record.id,
+    name: typeof record.name === "string" ? record.name : "Untitled timetable",
+    className: typeof record.className === "string" ? record.className : "",
+    days: Array.isArray(record.days) ? record.days : defaultDays,
+    periodsPerDay:
+      Number.isInteger(record.periodsPerDay) && record.periodsPerDay > 0
+        ? record.periodsPerDay
+        : 7,
+    subjects: Array.isArray(record.subjects) ? record.subjects : [],
+    teachers: record.teachers && typeof record.teachers === "object" ? record.teachers : {},
+    rooms: record.rooms && typeof record.rooms === "object" ? record.rooms : {},
+    lessons: Array.isArray(record.lessons) ? record.lessons : [],
+    updatedAt: typeof record.updatedAt === "number" ? record.updatedAt : 0,
+  };
+  return isTimetableRecord(normalized) ? normalized : null;
+}
+
 function readSaved(): Timetable[] {
   try {
     const value = localStorage.getItem(STORAGE_KEY);
-    return value ? (JSON.parse(value) as Timetable[]) : [];
+    if (!value) return [];
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.map(normalizeSavedTimetable).filter((record): record is Timetable => record !== null)
+      : [];
   } catch {
     return [];
   }
@@ -262,12 +296,12 @@ function App() {
 
   function openTimetable(record: Timetable) {
     setSelectedId(record.id);
-    setName(record.name);
-    setClassName(record.className);
-    setDays(record.days);
+    setName(record.name || "Untitled timetable");
+    setClassName(record.className || "");
+    setDays(Array.isArray(record.days) ? record.days : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
     setPeriodsPerDay(record.periodsPerDay);
-    setSubjectsText(record.subjects.join("\n"));
-    setLessons(record.lessons);
+    setSubjectsText(Array.isArray(record.subjects) ? record.subjects.join("\n") : "");
+    setLessons(Array.isArray(record.lessons) ? record.lessons : []);
     setError("");
     setNotice(`Opened ${record.name}.`);
   }
@@ -536,7 +570,7 @@ function App() {
                         <span className="saved-item-copy">
                           <strong>{record.name}</strong>
                           <small>
-                            {record.className} · {record.days.length} days
+                            {record.className} · {record.days?.length ?? 0} days
                           </small>
                         </span>
                       </button>

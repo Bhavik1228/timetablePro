@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import type { Timetable } from "../types";
 import { getFirebaseServices } from "../firebase";
+import { isTimetableRecord } from "./timetableBackup";
 
 function getUserCollection(userId: string) {
   const { auth, db } = getFirebaseServices();
@@ -97,9 +98,12 @@ export function subscribeToTimetables(
   return onSnapshot(
     orderedQuery,
     (snapshot) => {
-      const timetables = snapshot.docs.map(
-        (document) => document.data() as Timetable,
-      );
+      const documents = snapshot.docs.map((document) => document.data());
+      const timetables = documents.filter(isTimetableRecord);
+
+      if (timetables.length !== documents.length) {
+        onError(new Error("Some saved timetables contain invalid data and were skipped."));
+      }
 
       onChange(timetables);
     },

@@ -45,7 +45,7 @@ function isLesson(value: unknown): value is Lesson {
   );
 }
 
-function isTimetable(value: unknown): value is Timetable {
+export function isTimetableRecord(value: unknown): value is Timetable {
   if (!isRecord(value)) return false;
 
   return (
@@ -75,7 +75,7 @@ function isTimetable(value: unknown): value is Timetable {
 export function createTimetableBackup(
   timetables: readonly Timetable[],
 ): string {
-  if (!timetables.every(isTimetable)) {
+  if (!timetables.every(isTimetableRecord)) {
     throw new Error("Cannot export invalid timetable data.");
   }
 
@@ -116,7 +116,7 @@ export function parseTimetableBackup(json: string): Timetable[] {
     throw new Error("The backup does not contain a timetable list.");
   }
 
-  if (!parsed.timetables.every(isTimetable)) {
+  if (!parsed.timetables.every(isTimetableRecord)) {
     throw new Error(
       "The backup contains invalid timetable data. No data was imported.",
     );
