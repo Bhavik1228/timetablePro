@@ -252,7 +252,7 @@ function makeDefaults(): SchoolData {
       schoolEndTime: "15:00",
       lessonDurationMinutes: 40,
       passingTimeMinutes: 5,
-      periodsPerDay: 8,
+      periodsPerDay: 7,
       maxConsecutiveSameSubject: 2,
       maxLessonsPerSubjectPerDay: 2,
       events: [

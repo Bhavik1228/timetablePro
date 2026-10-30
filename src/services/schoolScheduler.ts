@@ -78,6 +78,31 @@ function isTeacherAvailable(
   });
 }
 
+function isContiguousBlock(
+  day: SchoolDay,
+  periods: number[],
+  periodWindows: Map<string, PeriodWindow>,
+  passingTimeMinutes: number,
+): boolean {
+  for (let index = 1; index < periods.length; index += 1) {
+    const previous = periodWindows.get(`${day}:${periods[index - 1]}`);
+    const current = periodWindows.get(`${day}:${periods[index]}`);
+
+    if (!previous || !current) return false;
+
+    const previousEnd = previous.endTime.split(":").map(Number);
+    const currentStart = current.startTime.split(":").map(Number);
+    const gap =
+      currentStart[0] * 60 +
+      currentStart[1] -
+      (previousEnd[0] * 60 + previousEnd[1]);
+
+    if (gap > passingTimeMinutes) return false;
+  }
+
+  return true;
+}
+
 function canPlace(
   placement: Placement,
   occupancy: Map<string, LessonRequest>,
@@ -89,7 +114,7 @@ function canPlace(
   subjectPeriods: Map<string, Map<number, string>>,
   settings: SchoolData["settings"],
 ): boolean {
-  const { request, day, startPeriod, teacher } = placement;
+  const { request, day, startPeriod, teacher, room } = placement;
   const endPeriod = startPeriod + request.requirement.periodsPerLesson - 1;
   const periods = Array.from(
     { length: request.requirement.periodsPerLesson },
@@ -182,6 +207,17 @@ function listCandidates(
         { length: request.requirement.periodsPerLesson },
         (_, index) => startPeriod + index,
       );
+      if (
+        !isContiguousBlock(
+          day,
+          periods,
+          periodWindows,
+          settings.passingTimeMinutes,
+        )
+      ) {
+        continue;
+      }
+
       const teachers: Array<TeacherRecord | null> = [
         ...request.candidateTeachers,
       ];

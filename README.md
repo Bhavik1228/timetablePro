@@ -1,75 +1,67 @@
-# React + TypeScript + Vite
+# TimeTable Pro
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+TimeTable Pro is a React and TypeScript school timetable planner. The current
+browser app provides a standalone timetable editor, local saved timetables, and
+optional Firebase email sign-in and per-user timetable sync. School-management
+records and the school scheduler service are not yet connected to the visible
+planner UI.
 
-Currently, two official plugins are available:
+## Local development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use Node.js 24 or newer to run the test suite.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```powershell
+npm install
+Copy-Item .env.example src\.env
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Vite is configured to load environment files from `src`. The copied
+`src\.env` file is ignored by Git. Set these values there to enable Firebase
+Authentication and saved-timetable sync:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID` (optional)
+- `VITE_FIREBASE_STORAGE_BUCKET` (optional)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+In Firebase, enable Email/Password Authentication, create a Firestore database,
+and deploy the repository's `firestore.rules`. The current rules allow each
+authenticated user to access only their own `users/{uid}/timetables` records.
+Do not put service-account or service-role credentials in Vite environment
+variables.
 
+## Checks
+
+```powershell
+npm test
+npx tsc --noEmit
+npm run lint
+npm run build
 ```
+
+The tests use Node's built-in test runner and native TypeScript stripping.
+
+## Persistence and deployment status
+
+- The standalone planner stores its saved timetables in browser storage when
+  signed out. When Firebase is configured and the user is signed in, those
+  timetables sync to that user's Firestore collection.
+- Teachers, classes, subjects, assignments, transition rules, rooms, and school
+  settings are stored in browser `localStorage`; they are not synchronized to
+  Firestore and are not protected by server-side roles or school/tenant
+  boundaries.
+- The school-data service adds a missing room list when it reads older records,
+  preserving existing school records. There is no migration from the separate
+  legacy `schoolCore` data store to the newer school-data model.
+- The UI does not yet expose the school-management service or connect its
+  generated schedules to draft/publish/version workflows. CSV support and
+  backups cover standalone timetables only, not the complete school dataset.
+
+**Deployment decision: local preview only; not production-ready for school
+management or multi-user use.** Production deployment requires a school-scoped
+repository, server-enforced role authorization and tenant isolation, authenticated
+audit history, and a reviewed migration from existing browser data before those
+records move to a shared backend. No cloud migration has been performed.

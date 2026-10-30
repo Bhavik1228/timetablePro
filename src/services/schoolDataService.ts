@@ -52,7 +52,7 @@ export function createDefaultSchoolSettings(): SchoolSettings {
     schoolEndTime: "15:00",
     lessonDurationMinutes: 40,
     passingTimeMinutes: 5,
-    periodsPerDay: 8,
+    periodsPerDay: 7,
     events: [
       {
         id: createId("event"),
@@ -341,7 +341,8 @@ export function updateClass(
   id: string,
   changes: Partial<Omit<ClassRecord, "id" | "createdAt">>,
 ): ClassRecord {
-  const existing = readStoredData().classes.find((item) => item.id === id);
+  const data = readStoredData();
+  const existing = data.classes.find((item) => item.id === id);
 
   if (!existing) throw new Error("Class not found.");
 
@@ -352,6 +353,22 @@ export function updateClass(
     createdAt: existing.createdAt,
     updatedAt: now(),
   };
+
+  const duplicate = data.classes.some(
+    (item) =>
+      item.id !== id &&
+      item.name.trim().toLocaleLowerCase() ===
+        updated.name.trim().toLocaleLowerCase() &&
+      item.section.trim().toLocaleLowerCase() ===
+        updated.section.trim().toLocaleLowerCase() &&
+      item.academicYear.trim() === updated.academicYear.trim(),
+  );
+
+  if (duplicate) {
+    throw new Error(
+      "A class with this name, section, and academic year already exists.",
+    );
+  }
 
   updateData((current) => ({
     ...current,
@@ -566,6 +583,18 @@ export function saveSubjectAssignment(
   }
 
   if (
+    input.eligibleTeacherIds.some(
+      (teacherId) => !data.teachers.some((teacher) => teacher.id === teacherId),
+    ) ||
+    (input.preferredTeacherId !== null &&
+      !data.teachers.some(
+        (teacher) => teacher.id === input.preferredTeacherId,
+      ))
+  ) {
+    throw new Error("The assignment references a teacher that does not exist.");
+  }
+
+  if (
     !Number.isInteger(input.weeklyFrequency) ||
     input.weeklyFrequency < 0 ||
     input.weeklyFrequency > 70
@@ -643,6 +672,10 @@ export function saveTransitionRule(
     throw new Error("A subject cannot trigger itself as a transition subject.");
   }
 
+  if (input.applicableClassIds.some((id) => !data.classes.some((item) => item.id === id))) {
+    throw new Error("A transition rule references an unknown class.");
+  }
+
   if (
     !Number.isInteger(input.weeklyFrequency) ||
     input.weeklyFrequency < 0 ||
@@ -693,6 +726,14 @@ export function updateTransitionRule(
     updated.requiredSubjectIds.includes(updated.targetSubjectId)
   ) {
     throw new Error("The transition rule has an invalid trigger configuration.");
+  }
+
+  if (
+    updated.applicableClassIds.some(
+      (classId) => !data.classes.some((item) => item.id === classId),
+    )
+  ) {
+    throw new Error("The transition rule references an unknown class.");
   }
 
   updateData((current) => ({
@@ -811,6 +852,9 @@ export function validateSchoolData(
   const classIds = new Set(data.classes.map((item) => item.id));
   const teacherIds = new Set(data.teachers.map((item) => item.id));
   const roomNames = new Set<string>();
+  const employeeCodes = new Set<string>();
+  const subjectCodes = new Set<string>();
+  const classKeys = new Set<string>();
 
   const assignmentKeys = new Set<string>();
 
@@ -836,6 +880,52 @@ export function validateSchoolData(
         entityId: room.id,
       });
     }
+  }
+
+  for (const teacher of data.teachers) {
+    const code = teacher.employeeCode.trim().toLocaleLowerCase();
+    if (code && employeeCodes.has(code)) {
+      issues.push({
+        code: "DUPLICATE_EMPLOYEE_CODE",
+        severity: "error",
+        message: "Employee codes must be unique.",
+        entityType: "teacher",
+        entityId: teacher.id,
+      });
+    }
+    if (code) employeeCodes.add(code);
+  }
+
+  for (const subject of data.subjects) {
+    const code = subject.code.trim().toLocaleLowerCase();
+    if (code && subjectCodes.has(code)) {
+      issues.push({
+        code: "DUPLICATE_SUBJECT_CODE",
+        severity: "error",
+        message: "Subject codes must be unique.",
+        entityType: "subject",
+        entityId: subject.id,
+      });
+    }
+    if (code) subjectCodes.add(code);
+  }
+
+  for (const classRecord of data.classes) {
+    const key = [
+      classRecord.name.trim().toLocaleLowerCase(),
+      classRecord.section.trim().toLocaleLowerCase(),
+      classRecord.academicYear.trim(),
+    ].join(":");
+    if (classKeys.has(key)) {
+      issues.push({
+        code: "DUPLICATE_CLASS",
+        severity: "error",
+        message: "Class names, sections, and academic years must be unique.",
+        entityType: "class",
+        entityId: classRecord.id,
+      });
+    }
+    classKeys.add(key);
   }
 
   for (const assignment of data.subjectAssignments) {

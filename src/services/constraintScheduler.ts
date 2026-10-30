@@ -8,12 +8,12 @@ import type {
   Teacher,
   SchoolRoom,
   ValidationIssue,
-} from "./schoolCore.ts";
+} from "./schoolCore";
 
 import {
   validateSettings,
   validateSchoolData,
-} from "./schoolCore.ts";
+} from "./schoolCore";
 
 export interface SchedulerResult {
   success: boolean;
@@ -579,10 +579,10 @@ export function generateConstraintTimetable(
 }
 
 function requireValidation(): {
-  validateVersion: typeof import("./schoolCore.ts").validateVersion;
+  validateVersion: typeof import("./schoolCore").validateVersion;
 } {
   // Static import is used instead of dynamic module loading.
   return { validateVersion: validateVersionImport };
 }
 
-import { validateVersion as validateVersionImport } from "./schoolCore.ts";
+import { validateVersion as validateVersionImport } from "./schoolCore";
